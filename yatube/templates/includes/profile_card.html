@@ -7,39 +7,43 @@
           </div>
           <div class="h3 text-muted">
             <!-- username автора -->
-            @{{ author.username }}
+               <a
+                  class="h3 text-muted"
+                  href="{% url 'posts:profile_unfollow' author.username %}" role="button">
+                  @{{ author.username }}
+                </a>
           </div>
         </div>
         <ul class="list-group list-group-flush">
           <li class="list-group-item">
             <div class="h6 text-muted">
-              Подписчиков: {{ followers_count }} <br>
-              Подписан: {{ following_count }}
+              Подписчиков: {{ author.following.count }} <br>
+              Подписан: {{ author.follower.count }}
             </div>
           </li>
           <li class="list-group-item">
             <div class="h6 text-muted">
               <!-- Количество записей -->
-              Записей: {{ posts_count }}
+              Записей: {{ author.posts.count }}
             </div>
           </li>
         <!-- Реализация подписки -->
           {% if user.username != author.username %}
-          <li class="list-group-item">
-            {% if following %}
-                <a
-                  class="btn btn-lg btn-light"
-                  href="{% url 'posts:profile_unfollow' author.username %}" role="button">
-                  Отписаться
-                </a>
-            {% else %}
-                <a
-                  class="btn btn-lg btn-primary"
-                  href="{% url 'posts:profile_follow' author.username %}" role="button">
-                  Подписаться
-                </a>
-            {% endif %}
-          </li>
+              <li class="list-group-item">
+                {% if following %}
+                    <a
+                      class="btn btn-lg btn-light"
+                      href="{% url 'posts:profile_unfollow' author.username %}" role="button">
+                      Отписаться
+                    </a>
+                {% else %}
+                    <a
+                      class="btn btn-lg btn-primary"
+                      href="{% url 'posts:profile_follow' author.username %}" role="button">
+                      Подписаться
+                    </a>
+                {% endif %}
+              </li>
           {% endif %}
         </ul>
       </div>

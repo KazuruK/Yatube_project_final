@@ -4,10 +4,10 @@
 
 {% block content %}
     <p>
-        {{ group.description }}
+        {{ group.description|linebreaksbr  }}
     </p><br>
     {% for post in page %}
-        {% include "includes/post_item.html" with post=post %}
+        {% include "includes/post_item.html" with post=post ignore_group=True %}
     {%  endfor %}
 
     {% include "includes/paginator.html" %}

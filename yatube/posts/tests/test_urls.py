@@ -1,20 +1,37 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+from django.urls import reverse
 
-from ..models import Group, Post
+from ..models import Group, Post, User
 
-User = get_user_model()
+GROUP_SLUG = 'test'
+USERNAME = 'test_admin'
+USERNAME_FOLLOW = 'test_authorized_user'
+REDIRECT = '/auth/login/?next='
+PAGE_NOT_FOUND = '404/'
+INDEX_URL = reverse('posts:index')
+ALL_GROUPS_URL = reverse('posts:all_groups')
+GROUP_URL = reverse('posts:group_posts', kwargs={'slug': GROUP_SLUG})
+NEW_POST_URL = reverse('posts:new_post')
+FOLLOW_URL = reverse('posts:follow_index')
+PROFILE_URL = reverse('posts:profile', kwargs={'username': USERNAME})
+PROFILE_FOLLOW_URL = reverse(
+    'posts:profile_follow',
+    kwargs={'username': USERNAME}
+)
+PROFILE_UNFOLLOW_URL = reverse(
+    'posts:profile_unfollow',
+    kwargs={'username': USERNAME}
+)
 
 
 class TaskURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
         user = User.objects.create_user(
-            'test_admin',
+            USERNAME,
             'admin@admin.com',
             'admin'
         )
@@ -22,14 +39,18 @@ class TaskURLTests(TestCase):
         user.save()
         cls.user = user
         user2 = User.objects.create_user(
-            'test_authorized_user',
+            USERNAME_FOLLOW,
             'authorized@user.ru',
             'user'
         )
         user2.last_name = 'usered'
         user2.save()
         cls.user2 = user2
-
+        cls.guest_client = Client()
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(user)
+        cls.authorized_client2 = Client()
+        cls.authorized_client2.force_login(user2)
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test',
@@ -39,94 +60,107 @@ class TaskURLTests(TestCase):
             text='Тестовый пост',
             author=user
         )
+        cls.POST_URL = reverse(
+            'posts:post',
+            kwargs={
+                'username': USERNAME,
+                'post_id': TaskURLTests.post.id
+            }
+        )
+        cls.POST_EDIT_URL = reverse(
+            'posts:post_edit',
+            kwargs={
+                'username': USERNAME,
+                'post_id': TaskURLTests.post.id
+            }
+        )
+        cls.POST_COMMENT_URL = reverse(
+            'posts:add_comment',
+            kwargs={
+                'username': USERNAME,
+                'post_id': TaskURLTests.post.id
+            }
+        )
 
-    def setUp(self):
-        self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(TaskURLTests.user)
-        self.authorized_client2 = Client()
-        self.authorized_client2.force_login(TaskURLTests.user2)
-
-    def test_guest_urls(self):
-        non_login_required_urls = [
-            '/',
-            f'/group/{TaskURLTests.group.slug}/',
-            f'/{TaskURLTests.user.username}/',
-            f'/{TaskURLTests.user.username}/{TaskURLTests.post.id}/'
+    def test_urls(self):
+        url_client_status = [
+            [INDEX_URL, self.guest_client, HTTPStatus.OK],
+            [INDEX_URL, self.authorized_client, HTTPStatus.OK],
+            [ALL_GROUPS_URL, self.guest_client, HTTPStatus.FOUND],
+            [ALL_GROUPS_URL, self.authorized_client, HTTPStatus.OK],
+            [GROUP_URL, self.guest_client, HTTPStatus.OK],
+            [GROUP_URL, self.authorized_client, HTTPStatus.OK],
+            [NEW_POST_URL, self.guest_client, HTTPStatus.FOUND],
+            [NEW_POST_URL, self.authorized_client, HTTPStatus.OK],
+            [FOLLOW_URL, self.guest_client, HTTPStatus.FOUND],
+            [FOLLOW_URL, self.authorized_client, HTTPStatus.OK],
+            [PROFILE_URL, self.guest_client, HTTPStatus.OK],
+            [PROFILE_URL, self.authorized_client, HTTPStatus.OK],
+            [PROFILE_FOLLOW_URL, self.guest_client, HTTPStatus.FOUND],
+            [PROFILE_FOLLOW_URL, self.authorized_client2, HTTPStatus.FOUND],
+            [PROFILE_UNFOLLOW_URL, self.guest_client, HTTPStatus.FOUND],
+            [PROFILE_UNFOLLOW_URL, self.authorized_client2, HTTPStatus.FOUND],
+            [self.POST_URL, self.guest_client, HTTPStatus.OK],
+            [self.POST_URL, self.authorized_client, HTTPStatus.OK],
+            [self.POST_EDIT_URL, self.guest_client, HTTPStatus.FOUND],
+            [self.POST_EDIT_URL, self.authorized_client, HTTPStatus.OK],
+            [self.POST_EDIT_URL, self.authorized_client2, HTTPStatus.FOUND],
+            [self.POST_COMMENT_URL, self.guest_client, HTTPStatus.FOUND],
+            [self.POST_COMMENT_URL, self.authorized_client, HTTPStatus.FOUND],
+            [
+                self.POST_COMMENT_URL + PAGE_NOT_FOUND,
+                self.guest_client,
+                HTTPStatus.NOT_FOUND
+            ],
+            [
+                self.POST_COMMENT_URL + PAGE_NOT_FOUND,
+                self.authorized_client,
+                HTTPStatus.NOT_FOUND
+            ],
         ]
-        for adress in non_login_required_urls:
-            with self.subTest(adress=adress):
+        for test in url_client_status:
+            with self.subTest(test=test):
                 self.assertEqual(
-                    self.guest_client.get(adress).status_code,
-                    HTTPStatus.OK
+                    test[1].get(test[0]).status_code,
+                    test[2]
                 )
 
-    def test_redirect_urls(self):
-
-        login_required_urls = {
-            '/group/': '/auth/login/?next=/group/',
-            '/new/': '/auth/login/?next=/new/'
-        }
-
-        for adress, redirect in login_required_urls.items():
-            with self.subTest(adress=adress):
-                self.assertRedirects(
-                    self.guest_client.get(adress, follow=True),
-                    redirect
-                )
-
-        redirect_urls = {
-            f'/{TaskURLTests.user.username}/follow/':
-                f'/{TaskURLTests.user.username}/',
-            f'/{TaskURLTests.user.username}/unfollow/':
-                f'/{TaskURLTests.user.username}/',
-        }
-
-        for adress, redirect in redirect_urls.items():
-            with self.subTest(adress=adress):
-                self.assertRedirects(
-                    self.authorized_client2.get(adress, follow=True),
-                    redirect
-                )
-
-    def test_authorized_user(self):
-
-        all_urls = [
-            '/',
-            '/follow/',
-            '/new/',
-            '/group/',
-            f'/group/{TaskURLTests.group.slug}/',
-            f'/{TaskURLTests.user.username}/',
-            f'/{TaskURLTests.user.username}/{TaskURLTests.post.id}/'
+    def test_redirect(self):
+        url_client_redirect = [
+            [ALL_GROUPS_URL, self.guest_client, REDIRECT + ALL_GROUPS_URL],
+            [NEW_POST_URL, self.guest_client, REDIRECT + NEW_POST_URL],
+            [FOLLOW_URL, self.guest_client, REDIRECT + FOLLOW_URL],
+            [
+                PROFILE_FOLLOW_URL,
+                self.guest_client,
+                REDIRECT + PROFILE_FOLLOW_URL
+            ],
+            [PROFILE_FOLLOW_URL, self.authorized_client2, PROFILE_URL],
+            [
+                PROFILE_UNFOLLOW_URL,
+                self.guest_client,
+                REDIRECT + PROFILE_UNFOLLOW_URL
+            ],
+            [PROFILE_UNFOLLOW_URL, self.authorized_client2, PROFILE_URL],
+            [
+                self.POST_EDIT_URL,
+                self.guest_client,
+                REDIRECT + self.POST_EDIT_URL
+            ],
+            [self.POST_EDIT_URL, self.authorized_client2, self.POST_URL],
+            [
+                self.POST_COMMENT_URL,
+                self.guest_client,
+                REDIRECT + self.POST_COMMENT_URL
+            ],
+            [self.POST_COMMENT_URL, self.authorized_client, self.POST_URL],
         ]
-
-        for adress in all_urls:
-            with self.subTest(adress=adress):
-                self.assertEqual(
-                    self.authorized_client.get(adress).status_code,
-                    HTTPStatus.OK
+        for test in url_client_redirect:
+            with self.subTest(test=test):
+                self.assertRedirects(
+                    test[1].get(test[0], follow=True),
+                    test[2]
                 )
-
-    def test_access_edit(self):
-        adress = f'/{TaskURLTests.user.username}/{TaskURLTests.post.id}/edit/'
-        response_guest = self.guest_client.get(adress, follow=True)
-        response_user = self.authorized_client2.get(adress, follow=True)
-        response_author = self.authorized_client.get(adress)
-
-        self.assertRedirects(
-            response_guest,
-            f'/auth/login/?next=/{TaskURLTests.user.username}/'
-            f'{TaskURLTests.post.id}/edit/'
-        )
-        self.assertRedirects(
-            response_user,
-            f'/{TaskURLTests.user.username}/{TaskURLTests.post.id}/'
-        )
-        self.assertEqual(
-            response_author.status_code,
-            HTTPStatus.OK
-        )
 
     def test_page_not_found(self):
         self.assertEqual(
@@ -135,21 +169,19 @@ class TaskURLTests(TestCase):
         )
 
     def test_urls_uses_correct_template(self):
-
         templates_url_names = {
-            '/': 'posts/index.html',
-            '/new/': 'posts/new_post.html',
-            '/group/': 'posts/groups.html',
-            f'/group/{TaskURLTests.group.slug}/': 'posts/group.html',
-            f'/{TaskURLTests.user.username}/': 'posts/profile.html',
-            f'/{TaskURLTests.user.username}/'
-            f'{TaskURLTests.post.id}/': 'posts/post.html',
-            f'/{TaskURLTests.user.username}/'
-            f'{TaskURLTests.post.id}/edit/': 'posts/new_post.html',
-            '/404/': 'misc/404.html'
+            INDEX_URL: 'posts/index.html',
+            NEW_POST_URL: 'posts/new_post.html',
+            ALL_GROUPS_URL: 'posts/groups.html',
+            GROUP_URL: 'posts/group.html',
+            PROFILE_URL: 'posts/profile.html',
+            self.POST_URL: 'posts/post.html',
+            self.POST_EDIT_URL: 'posts/new_post.html',
+            self.POST_EDIT_URL + PAGE_NOT_FOUND: 'misc/404.html'
         }
-
         for adress, template in templates_url_names.items():
             with self.subTest(adress=adress):
-                response = self.authorized_client.get(adress)
-                self.assertTemplateUsed(response, template)
+                self.assertTemplateUsed(
+                    self.authorized_client.get(adress),
+                    template
+                )

@@ -86,7 +86,8 @@ class CommentModelTest(TestCase):
         for field, expected_value in field_verbose_post.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    Comment._meta.get_field(field).verbose_name, expected_value)
+                    Comment._meta.get_field(field).verbose_name, expected_value
+                )
 
     def test_post_to_string(self):
         expected_value = self.comment.text[:15]

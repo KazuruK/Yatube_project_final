@@ -11,13 +11,13 @@ from ..models import Follow, Group, Post, User
 
 TEST_DIR = 'test_data'
 SMALL_GIF = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
+    b'\x47\x49\x46\x38\x39\x61\x02\x00'
+    b'\x01\x00\x80\x00\x00\x00\x00\x00'
+    b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+    b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+    b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+    b'\x0A\x00\x3B'
+)
 GROUP_SLUG = 'test'
 EMPTY_GROUP_SLUG = 'empty_test'
 USERNAME = 'test_admin'
@@ -100,7 +100,6 @@ class TaskPagesTests(TestCase):
                 'post_id': TaskPagesTests.post_in_group.id
             }
         )
-
 
     @classmethod
     def tearDownClass(cls):

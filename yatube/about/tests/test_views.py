@@ -14,9 +14,9 @@ class StaticViewsTests(TestCase):
             reverse('about:tech')
         ]
 
-        for reverse_name in reverse_url:
-            with self.subTest(reverse_name=reverse_name):
-                response = self.guest_client.get(reverse_name)
+        for url_name in reverse_url:
+            with self.subTest(url_name=url_name):
+                response = self.guest_client.get(url_name)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_about_page_uses_correct_template(self):
@@ -25,7 +25,7 @@ class StaticViewsTests(TestCase):
             reverse('about:tech'): 'about/tech.html',
         }
 
-        for reverse_name, template in reverse_to_template.items():
-            with self.subTest(reverse_name=reverse_name):
-                response = self.guest_client.get(reverse_name)
+        for url_name, template in reverse_to_template.items():
+            with self.subTest(url_name=url_name):
+                response = self.guest_client.get(url_name)
                 self.assertTemplateUsed(response, template)

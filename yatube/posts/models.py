@@ -13,7 +13,7 @@ class Group(models.Model):
 
     title = models.CharField(max_length=200, verbose_name='Название')
     slug = models.SlugField(max_length=200, unique=True,
-                            verbose_name='Уникальный адрес')
+                            verbose_name='Уникальный идентификатор группы')
     description = models.TextField(blank=True, null=True,
                                    verbose_name='Описание')
 
@@ -84,7 +84,7 @@ class Follow(models.Model):
                              verbose_name='Подписчик')
     author = models.ForeignKey(User, on_delete=models.CASCADE,
                                related_name='following',
-                               verbose_name='Подписан')
+                               verbose_name='Блогер')
 
     class Meta:
         verbose_name = 'Подписка'

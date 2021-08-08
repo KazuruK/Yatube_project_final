@@ -10,7 +10,7 @@ from django.urls import reverse
 from ..models import Comment, Group, Post, User
 
 TEST_DIR = 'test_data'
-REDIRECT = '/auth/login/?next='
+REDIRECT = reverse('login') + '?next='
 INDEX_URL = reverse('posts:index')
 NEW_POST_URL = reverse('posts:new_post')
 SMALL_GIF = (
@@ -72,21 +72,15 @@ class TaskPostFormTests(TestCase):
         cls.post = Post.objects.create(
             text='Тестовый пост',
             author=user,
-            group=TaskPostFormTests.group
+            group=cls.group
         )
         cls.POST_URL = reverse(
             'posts:post',
-            kwargs={
-                'username': user.username,
-                'post_id': TaskPostFormTests.post.id
-            }
+            args=[user.username, cls.post.id]
         )
         cls.POST_EDIT_URL = reverse(
             'posts:post_edit',
-            kwargs={
-                'username': user.username,
-                'post_id': TaskPostFormTests.post.id
-            }
+            args=[user.username, cls.post.id]
         )
 
     @classmethod
@@ -96,7 +90,7 @@ class TaskPostFormTests(TestCase):
 
     def test_guest_create_post(self):
         posts_count = Post.objects.count()
-        pk_before_create = Post.objects.values_list('pk', flat=True)
+        all_pk_before_create = Post.objects.values_list('pk', flat=True)
         form_data_guest = {
             'text': 'Новый тестовый гостевой пост',
             'group': self.group.id,
@@ -109,34 +103,40 @@ class TaskPostFormTests(TestCase):
         )
         self.assertRedirects(response_guest, REDIRECT + NEW_POST_URL)
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertEqual(
-            len(Post.objects.values_list('pk', flat=True)),
-            len(pk_before_create)
+        self.assertQuerysetEqual(
+            Post.objects.values_list('pk', flat=True),
+            all_pk_before_create,
+            transform=lambda x: x
         )
 
     def test_create_post(self):
-        posts_count = Post.objects.count()
-        pk_before_create = Post.objects.values_list('pk', flat=True)
         form_data = {
             'text': 'Новый тестовый пост',
             'group': self.group.id,
             'image': self.image
         }
+        all_post_pk_before_create = Post.objects.values_list('pk', flat=True)
+        all_post_pk_before_create_count = len(all_post_pk_before_create)
         response = self.authorized_client.post(
             NEW_POST_URL,
             data=form_data,
             follow=True
         )
-        self.assertEqual(Post.objects.count(), posts_count + 1)
+        all_post_pk_after_create = Post.objects.values_list('pk', flat=True)
         self.assertRedirects(response, INDEX_URL)
-        pk_after_create = Post.objects.values_list('pk', flat=True)
-        for pk in pk_after_create:
-            if pk not in pk_before_create:
-                post = Post.objects.get(pk=pk)
-                self.assertEqual(post.text, form_data['text'])
-                self.assertEqual(post.group.id, form_data['group'])
-                self.assertEqual(post.image, 'posts/small.gif')
-                self.assertEqual(post.author, self.user)
+        self.assertEqual(
+            all_post_pk_after_create.count(),
+            all_post_pk_before_create_count + 1
+        )
+        for pk in all_post_pk_after_create:
+            if pk not in all_post_pk_before_create:
+                for post in response.context['page']:
+                    if post.id == pk:
+                        self.assertEqual(post.text, form_data['text'])
+                        self.assertEqual(post.group.id, form_data['group'])
+                        self.assertEqual(post.image, 'posts/small.gif')
+                        self.assertEqual(post.author, self.user)
+                        break
                 break
 
     def test_form_edit_post(self):
@@ -145,7 +145,7 @@ class TaskPostFormTests(TestCase):
             'text': 'Новый тестовый пост',
             'group': self.group2.id,
         }
-        list_test = [
+        client_url_values = [
             [
                 self.guest_client,
                 REDIRECT + self.POST_EDIT_URL,
@@ -162,40 +162,45 @@ class TaskPostFormTests(TestCase):
                 [form_data['text'], self.group2, self.user]
             ],
         ]
-        for test in list_test:
-            with self.subTest(test=test):
-                response = test[0].post(
+        for client, url, values in client_url_values:
+            text, group, user = values
+            with self.subTest(
+                    client=client,
+                    url=url,
+                    text=text,
+                    group=group,
+                    user=user
+            ):
+                response = client.post(
                     self.POST_EDIT_URL,
                     data=form_data,
                     follow=True
                 )
-                new_post = Post.objects.get(pk=self.post.id)
                 self.assertRedirects(
                     response,
-                    test[1]
+                    url
                 )
+                if 'post' not in response.context:
+                    continue
+                new_post = response.context['post']
                 self.assertEqual(Post.objects.count(), posts_count)
-                self.assertEqual(new_post.text, test[2][0])
-                self.assertEqual(new_post.group, test[2][1])
-                self.assertEqual(new_post.author, test[2][2])
+                self.assertEqual(new_post.text, text)
+                self.assertEqual(new_post.group, group)
+                self.assertEqual(new_post.author, user)
 
-    def test_new_page_show_correct_context(self):
-        response = self.authorized_client.get(NEW_POST_URL)
-        for value, expected in self.form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context['form'].fields[value]
-                self.assertIsInstance(form_field, expected)
-
-    def test_edit_page_show_correct_context(self):
-        response_edit = self.authorized_client.get(self.POST_EDIT_URL)
-        for value, expected in self.form_fields.items():
-            with self.subTest(value=value):
-                edit_form_field = response_edit.context['form'].fields[value]
-                self.assertIsInstance(edit_form_field, expected)
-        self.assertEqual(
-            response_edit.context['post'],
-            self.post
-        )
+    def test_new_and_edit_page_show_correct_context(self):
+        urls = [NEW_POST_URL, self.POST_EDIT_URL]
+        for url in urls:
+            response = self.authorized_client.get(url)
+            for value, expected in self.form_fields.items():
+                with self.subTest(url=url, value=value, expected=expected):
+                    form_field = response.context['form'].fields[value]
+                    self.assertIsInstance(form_field, expected)
+            if url == self.POST_EDIT_URL:
+                self.assertEqual(
+                    response.context['post'],
+                    self.post
+                )
 
 
 class TaskCommentFormTests(TestCase):
@@ -232,26 +237,23 @@ class TaskCommentFormTests(TestCase):
         )
         cls.POST_URL = reverse(
             'posts:post',
-            kwargs={
-                'username': user.username,
-                'post_id': TaskCommentFormTests.post.id
-            }
+            args=[user.username, cls.post.id]
         )
         cls.POST_COMMENT_URL = reverse(
             'posts:add_comment',
-            kwargs={
-                'username': user.username,
-                'post_id': TaskCommentFormTests.post.id
-            }
+            args=[user.username, cls.post.id]
         )
 
     def test_create_comment(self):
-        pk_before_create = Comment.objects.values_list('pk', flat=True)
         form_data = {
             'text': 'Новый тестовый комментарий',
         }
         list_tests = [
-            [self.guest_client, REDIRECT + self.POST_COMMENT_URL],
+            [
+                self.guest_client,
+                REDIRECT + self.POST_COMMENT_URL,
+                [None, None, None]
+            ],
             [
                 self.authorized_client,
                 self.POST_URL,
@@ -263,24 +265,43 @@ class TaskCommentFormTests(TestCase):
                 [form_data['text'], self.user2, self.post]
             ],
         ]
-        for test in list_tests:
-            with self.subTest(test=test):
-                response = test[0].post(
+        for client, url, values in list_tests:
+            text, user, post = values
+            with self.subTest(
+                    client=client,
+                    url=url,
+                    text=text,
+                    user=user,
+                    post=post
+            ):
+                all_pk_before_create = Comment.objects.values_list(
+                    'pk',
+                    flat=True
+                )
+                response = client.post(
                     self.POST_COMMENT_URL,
                     data=form_data,
                     follow=True
                 )
-                self.assertRedirects(response, test[1])
-                pk_after_create = Comment.objects.values_list('pk', flat=True)
-                if pk_after_create == pk_before_create:
+                all_pk_after_create = Comment.objects.values_list(
+                    'pk',
+                    flat=True
+                )
+                self.assertRedirects(response, url)
+                if len(all_pk_after_create) == len(all_pk_before_create):
                     continue
-                for pk in pk_after_create:
-                    if pk not in pk_before_create:
-                        comment = Comment.objects.get(pk=pk)
-                        self.assertEqual(comment.text, test[2][0])
-                        self.assertEqual(comment.author, test[2][1])
-                        self.assertEqual(comment.post, test[2][2])
-                        break
+                self.assertEqual(
+                    len(all_pk_after_create),
+                    len(all_pk_before_create) + 1
+                )
+                for pk in all_pk_after_create:
+                    if pk not in all_pk_before_create:
+                        for comment in response.context['post'].comments.all():
+                            if comment.id == pk:
+                                self.assertEqual(comment.text, text)
+                                self.assertEqual(comment.author, user)
+                                self.assertEqual(comment.post, post)
+                                break
 
     def test_comment_page_show_correct_context(self):
         response = self.authorized_client.get(self.POST_URL)

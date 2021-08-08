@@ -47,11 +47,7 @@ def group_posts(request, slug):
     paginator = Paginator(posts_list, settings.PAGINATOR_POSTS_PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    return render(
-        request,
-        'posts/group.html',
-        {'group': group, 'page': page}
-    )
+    return render(request, 'posts/group.html', {'group': group, 'page': page})
 
 
 def profile(request, username):
@@ -60,29 +56,39 @@ def profile(request, username):
     paginator = Paginator(posts_list, settings.PAGINATOR_POSTS_PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    context = {
+    following = (
+        request.user.is_authenticated
+        and author != request.user
+        and Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).exists()
+    )
+    return render(request, 'posts/profile.html', {
         'author': author,
         'page': page,
-    }
-    if request.user.is_authenticated and author.following.filter(
-            author__following__user=request.user).exists():
-        context['following'] = True
-    return render(request, 'posts/profile.html', context)
+        'following': following
+    })
 
 
 def post_view(request, username, post_id):
-    author = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, author=author, id=post_id)
+    post = get_object_or_404(Post, author__username=username, id=post_id)
+    author = post.author
     form = CommentForm(request.POST or None)
-    context = {
+    following = (
+        request.user.is_authenticated
+        and author != request.user
+        and Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).exists()
+    )
+    return render(request, 'posts/post.html', {
         'author': author,
         'post': post,
         'form': form,
-    }
-    if request.user.is_authenticated and author.following.filter(
-            author__following__user=request.user).exists():
-        context['following'] = True
-    return render(request, 'posts/post.html', context)
+        'following': following
+    })
 
 
 @login_required
@@ -98,14 +104,10 @@ def post_edit(request, username, post_id):
     if form.is_valid():
         form.save()
         return redirect('posts:post', username=username, post_id=post_id)
-    return render(
-        request,
-        'posts/new_post.html',
-        {
-            'post': post,
-            'form': form,
-        }
-    )
+    return render(request, 'posts/new_post.html', {
+        'post': post,
+        'form': form,
+    })
 
 
 @login_required
@@ -116,14 +118,10 @@ def new_post(request):
         new_form.author = request.user
         new_form.save()
         return redirect('posts:index')
-    return render(
-        request,
-        'posts/new_post.html',
-        {
-            'form': form,
-            'edit': False
-        }
-    )
+    return render(request, 'posts/new_post.html', {
+        'form': form,
+        'edit': False
+    })
 
 
 @login_required
@@ -166,8 +164,9 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    user = request.user
-    if get_object_or_404(Follow, author=author, user=user):
-        Follow.objects.filter(author=author, user=user).delete()
+    get_object_or_404(
+        Follow,
+        author__username=username,
+        user=request.user
+    ).delete()
     return redirect('posts:profile', username=username)

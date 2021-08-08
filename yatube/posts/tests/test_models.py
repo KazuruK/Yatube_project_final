@@ -17,7 +17,7 @@ class GroupModelTest(TestCase):
         field_verbose_group = {
             'title': 'Название',
             'description': 'Описание',
-            'slug': 'Уникальный адрес'
+            'slug': 'Уникальный идентификатор группы'
         }
         for field, expected_value in field_verbose_group.items():
             with self.subTest(field=field):
@@ -25,8 +25,7 @@ class GroupModelTest(TestCase):
                     Group._meta.get_field(field).verbose_name, expected_value)
 
     def test_group_to_string(self):
-        expected_value = self.group.title
-        self.assertEqual(expected_value, str(self.group))
+        self.assertEqual(self.group.title, str(self.group))
 
 
 class PostModelTest(TestCase):
@@ -55,8 +54,7 @@ class PostModelTest(TestCase):
                     Post._meta.get_field(field).verbose_name, expected_value)
 
     def test_post_to_string(self):
-        expected_value = self.post.text[:15]
-        self.assertEqual(expected_value, str(self.post))
+        self.assertEqual(self.post.text[:15], str(self.post))
 
 
 class CommentModelTest(TestCase):
@@ -71,7 +69,7 @@ class CommentModelTest(TestCase):
             author=user
         )
         cls.comment = Comment.objects.create(
-            post=CommentModelTest.post,
+            post=cls.post,
             author=user,
             text='Тестовый комментарий больше 15 символов'
         )
@@ -98,7 +96,7 @@ class FollowModelTest(TestCase):
     def test_verbose_name(self):
         field_verbose_post = {
             'user': 'Подписчик',
-            'author': 'Подписан',
+            'author': 'Блогер',
         }
         for field, expected_value in field_verbose_post.items():
             with self.subTest(field=field):

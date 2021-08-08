@@ -23,24 +23,21 @@ EMPTY_GROUP_SLUG = 'empty_test'
 USERNAME = 'test_admin'
 USERNAME_FOLLOW_TEST1 = 'test_authorized_user1'
 USERNAME_FOLLOW_TEST2 = 'test_authorized_user2'
-REDIRECT = '/auth/login/?next='
+REDIRECT = reverse('login') + '?next='
 INDEX_URL = reverse('posts:index')
 ALL_GROUPS_URL = reverse('posts:all_groups')
-GROUP_URL = reverse('posts:group_posts', kwargs={'slug': GROUP_SLUG})
-EMPTY_GROUP_URL = reverse(
-    'posts:group_posts',
-    kwargs={'slug': EMPTY_GROUP_SLUG}
-)
+GROUP_URL = reverse('posts:group_posts', args=[GROUP_SLUG])
+EMPTY_GROUP_URL = reverse('posts:group_posts', args=[EMPTY_GROUP_SLUG])
 NEW_POST_URL = reverse('posts:new_post')
 FOLLOW_URL = reverse('posts:follow_index')
-PROFILE_URL = reverse('posts:profile', kwargs={'username': USERNAME})
+PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 PROFILE_FOLLOW_URL = reverse(
     'posts:profile_follow',
-    kwargs={'username': USERNAME_FOLLOW_TEST1}
+    args=[USERNAME_FOLLOW_TEST1]
 )
 PROFILE_UNFOLLOW_URL = reverse(
     'posts:profile_unfollow',
-    kwargs={'username': USERNAME_FOLLOW_TEST2}
+    args=[USERNAME_FOLLOW_TEST2]
 )
 
 
@@ -83,11 +80,11 @@ class TaskPagesTests(TestCase):
             slug=EMPTY_GROUP_SLUG,
             description='Тестовое описание пустой группы'
         )
-        cls.post_in_group = Post.objects.create(
+        cls.post = Post.objects.create(
             text='В тестовой группе содержится тестовый пост',
-            group=TaskPagesTests.group,
+            group=cls.group,
             author=user,
-            image=TaskPagesTests.image
+            image=cls.image
         )
         cls.follow = Follow.objects.create(
             user=user2,
@@ -95,10 +92,7 @@ class TaskPagesTests(TestCase):
         )
         cls.POST_URL = reverse(
             'posts:post',
-            kwargs={
-                'username': USERNAME,
-                'post_id': TaskPagesTests.post_in_group.id
-            }
+            args=[USERNAME, cls.post.id]
         )
 
     @classmethod
@@ -110,13 +104,6 @@ class TaskPagesTests(TestCase):
         cache.delete('index_page')
 
     def test_correct_post_in_context(self):
-        values = {
-            'group': self.post_in_group.group,
-            'text': self.post_in_group.text,
-            'pub_date': self.post_in_group.pub_date,
-            'author': self.post_in_group.author,
-            'image': 'posts/small.gif'
-        }
         list_urls_post_in_context = [
             [INDEX_URL, 'page'],
             [FOLLOW_URL, 'page'],
@@ -124,22 +111,43 @@ class TaskPagesTests(TestCase):
             [PROFILE_URL, 'page'],
             [self.POST_URL, 'post']
         ]
-        for test in list_urls_post_in_context:
-            with self.subTest(test=test):
-                response = self.authorized_client.get(test[0])
-                if test[1] == 'page':
-                    context_post = response.context[test[1]][0]
+        for url, key in list_urls_post_in_context:
+            with self.subTest(url=url, key=key):
+                response = self.authorized_client.get(url)
+                if key == 'page':
+                    post = response.context[key][0]
                 else:
-                    context_post = response.context[test[1]]
-                self.assertEqual(context_post.group, values['group'])
-                self.assertEqual(context_post.text, values['text'])
-                self.assertEqual(context_post.pub_date, values['pub_date'])
-                self.assertEqual(context_post.author, values['author'])
-                self.assertEqual(context_post.image, values['image'])
+                    post = response.context[key]
+                self.assertEqual(post.group, self.post.group)
+                self.assertEqual(post.text, self.post.text)
+                self.assertEqual(post.pub_date, self.post.pub_date)
+                self.assertEqual(post.author, self.post.author)
+                self.assertEqual(post.image, self.post.image)
         response_empty_group = self.authorized_client.get(EMPTY_GROUP_URL)
-        self.assertTrue(
-            self.post_in_group not in response_empty_group.context['page']
-        )
+        self.assertNotContains(response_empty_group, self.post)
+
+    def test_correct_user_in_context(self):
+        list_urls_user_in_context = [PROFILE_URL, self.POST_URL]
+        for url in list_urls_user_in_context:
+            with self.subTest(url=url):
+                response = self.authorized_client.get(url)
+                author = response.context['author']
+                self.assertEqual(author, self.user)
+
+    def test_correct_group_in_context(self):
+        list_urls_user_in_context = [GROUP_URL, ALL_GROUPS_URL]
+        for url in list_urls_user_in_context:
+            with self.subTest(url=url):
+                response = self.authorized_client.get(url)
+                if url == ALL_GROUPS_URL:
+                    for group_item in response.context['groups']:
+                        if group_item.id == self.group.id:
+                            group = group_item
+                else:
+                    group = response.context['group']
+                self.assertEqual(group.title, self.group.title)
+                self.assertEqual(group.slug, self.group.slug)
+                self.assertEqual(group.description, self.group.description)
 
 
 class PaginatorViewsTest(TestCase):
@@ -164,7 +172,7 @@ class PaginatorViewsTest(TestCase):
             (Post(
                 text='Текст',
                 author=user,
-                group=PaginatorViewsTest.group
+                group=cls.group
             ) for _ in range(11)),
             batch_size=10)
 
@@ -172,20 +180,23 @@ class PaginatorViewsTest(TestCase):
         cache.delete('index_page')
 
     def test_paginator(self):
-        reverse_to_posts_count = [INDEX_URL, GROUP_URL, PROFILE_URL]
-        for reverse_name in reverse_to_posts_count:
-            with self.subTest(reverse_name=reverse_name):
-                response = self.guest_client.get(reverse_name)
+        url_to_posts_count = [INDEX_URL, GROUP_URL, PROFILE_URL]
+        for url in url_to_posts_count:
+            with self.subTest(url=url):
+                first_page_response = self.guest_client.get(url)
+                first_page_length = len(first_page_response.context['page'])
+                if first_page_length < settings.PAGINATOR_POSTS_PER_PAGE:
+                    continue
                 self.assertEqual(
-                    len(response.context['page']),
+                    len(first_page_response.context['page']),
                     settings.PAGINATOR_POSTS_PER_PAGE
                 )
-        for reverse_name in reverse_to_posts_count:
-            with self.subTest(reverse_name=reverse_name):
-                response = self.guest_client.get(reverse_name + '?page=2')
+                second_page_response = self.guest_client.get(url + '?page=2')
                 self.assertEqual(
-                    len(response.context['page']),
-                    1)
+                    len(second_page_response.context['page']),
+                    (second_page_response.context['page'].paginator.count
+                     - settings.PAGINATOR_POSTS_PER_PAGE)
+                )
 
 
 class TaskCacheTests(TestCase):

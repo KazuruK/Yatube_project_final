@@ -73,18 +73,17 @@ def profile(request, username):
 
 def post_view(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
-    author = post.author
     form = CommentForm(request.POST or None)
     following = (
         request.user.is_authenticated
-        and author != request.user
+        and post.author != request.user
         and Follow.objects.filter(
             user=request.user,
-            author=author
+            author=post.author
         ).exists()
     )
     return render(request, 'posts/post.html', {
-        'author': author,
+        'author': post.author,
         'post': post,
         'form': form,
         'following': following
@@ -153,8 +152,10 @@ def follow_index(request):
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     user = request.user
-    if ((not Follow.objects.filter(author=author, user=user).exists()) and (
-            author != user)):
+    if author != user and not Follow.objects.filter(
+        author=author,
+        user=user
+    ).exists():
         Follow.objects.create(
             user=user,
             author=author

@@ -114,13 +114,12 @@ class TaskPagesTests(TestCase):
         for url, key in list_urls_post_in_context:
             with self.subTest(url=url, key=key):
                 response = self.authorized_client.get(url)
-                if key == 'page':
+                if key == 'page' and len(response.context[key]) == 1:
                     post = response.context[key][0]
                 else:
                     post = response.context[key]
                 self.assertEqual(post.group, self.post.group)
                 self.assertEqual(post.text, self.post.text)
-                self.assertEqual(post.pub_date, self.post.pub_date)
                 self.assertEqual(post.author, self.post.author)
                 self.assertEqual(post.image, self.post.image)
         response_empty_group = self.authorized_client.get(EMPTY_GROUP_URL)
@@ -131,8 +130,7 @@ class TaskPagesTests(TestCase):
         for url in list_urls_user_in_context:
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
-                author = response.context['author']
-                self.assertEqual(author, self.user)
+                self.assertEqual(response.context['author'], self.user)
 
     def test_correct_group_in_context(self):
         list_urls_user_in_context = [GROUP_URL, ALL_GROUPS_URL]
@@ -143,6 +141,7 @@ class TaskPagesTests(TestCase):
                     for group_item in response.context['groups']:
                         if group_item.id == self.group.id:
                             group = group_item
+                    self.assertEqual(group, self.group)
                 else:
                     group = response.context['group']
                 self.assertEqual(group.title, self.group.title)
@@ -173,7 +172,7 @@ class PaginatorViewsTest(TestCase):
                 text='Текст',
                 author=user,
                 group=cls.group
-            ) for _ in range(11)),
+            ) for _ in range(settings.PAGINATOR_POSTS_PER_PAGE + 1)),
             batch_size=10)
 
     def setUp(self):
@@ -184,9 +183,6 @@ class PaginatorViewsTest(TestCase):
         for url in url_to_posts_count:
             with self.subTest(url=url):
                 first_page_response = self.guest_client.get(url)
-                first_page_length = len(first_page_response.context['page'])
-                if first_page_length < settings.PAGINATOR_POSTS_PER_PAGE:
-                    continue
                 self.assertEqual(
                     len(first_page_response.context['page']),
                     settings.PAGINATOR_POSTS_PER_PAGE

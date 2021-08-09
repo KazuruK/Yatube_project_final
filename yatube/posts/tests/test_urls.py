@@ -1,3 +1,4 @@
+import uuid
 from http import HTTPStatus
 
 from django.test import Client, TestCase
@@ -17,7 +18,7 @@ FOLLOW_URL = reverse('posts:follow_index')
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 PROFILE_FOLLOW_URL = reverse('posts:profile_follow', args=[USERNAME])
 PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow', args=[USERNAME])
-PAGE_NOT_FOUND_URL = PROFILE_UNFOLLOW_URL + '404/'
+PAGE_NOT_FOUND_URL = f'{uuid.uuid4()}'
 
 
 class TaskURLTests(TestCase):
@@ -86,7 +87,6 @@ class TaskURLTests(TestCase):
             [self.POST_COMMENT_URL, self.guest_client, HTTPStatus.FOUND],
             [self.POST_COMMENT_URL, self.authorized_client, HTTPStatus.FOUND],
             [PAGE_NOT_FOUND_URL, self.guest_client, HTTPStatus.NOT_FOUND],
-            [PAGE_NOT_FOUND_URL, self.authorized_client, HTTPStatus.NOT_FOUND],
         ]
         for url, client, status_code in url_client_status:
             with self.subTest(url=url, client=client, status=status_code):
@@ -97,33 +97,28 @@ class TaskURLTests(TestCase):
 
     def test_redirect(self):
         url_client_redirect = [
-            [ALL_GROUPS_URL, self.guest_client, REDIRECT + ALL_GROUPS_URL],
-            [NEW_POST_URL, self.guest_client, REDIRECT + NEW_POST_URL],
-            [FOLLOW_URL, self.guest_client, REDIRECT + FOLLOW_URL],
-            [
-                PROFILE_FOLLOW_URL,
-                self.guest_client,
-                REDIRECT + PROFILE_FOLLOW_URL
-            ],
-            [PROFILE_FOLLOW_URL, self.authorized_client2, PROFILE_URL],
-            [
-                PROFILE_UNFOLLOW_URL,
-                self.guest_client,
-                REDIRECT + PROFILE_UNFOLLOW_URL
-            ],
-            [PROFILE_UNFOLLOW_URL, self.authorized_client2, PROFILE_URL],
-            [
-                self.POST_EDIT_URL,
-                self.guest_client,
-                REDIRECT + self.POST_EDIT_URL
-            ],
-            [self.POST_EDIT_URL, self.authorized_client2, self.POST_URL],
-            [
-                self.POST_COMMENT_URL,
-                self.guest_client,
-                REDIRECT + self.POST_COMMENT_URL
-            ],
-            [self.POST_COMMENT_URL, self.authorized_client, self.POST_URL],
+            [ALL_GROUPS_URL, self.guest_client,
+             REDIRECT + ALL_GROUPS_URL],
+            [NEW_POST_URL, self.guest_client,
+             REDIRECT + NEW_POST_URL],
+            [FOLLOW_URL, self.guest_client,
+             REDIRECT + FOLLOW_URL],
+            [PROFILE_FOLLOW_URL, self.guest_client,
+             REDIRECT + PROFILE_FOLLOW_URL],
+            [PROFILE_FOLLOW_URL, self.authorized_client2,
+             PROFILE_URL],
+            [PROFILE_UNFOLLOW_URL, self.guest_client,
+             REDIRECT + PROFILE_UNFOLLOW_URL],
+            [PROFILE_UNFOLLOW_URL, self.authorized_client2,
+             PROFILE_URL],
+            [self.POST_EDIT_URL, self.guest_client,
+             REDIRECT + self.POST_EDIT_URL],
+            [self.POST_EDIT_URL, self.authorized_client2,
+             self.POST_URL],
+            [self.POST_COMMENT_URL, self.guest_client,
+             REDIRECT + self.POST_COMMENT_URL],
+            [self.POST_COMMENT_URL, self.authorized_client,
+             self.POST_URL],
         ]
         for url, client, redirect in url_client_redirect:
             with self.subTest(url=url, client=client, redirect=redirect):

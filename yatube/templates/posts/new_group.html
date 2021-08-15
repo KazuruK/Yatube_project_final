@@ -1,43 +1,25 @@
 {% extends "posts/base.html" %}
 
-{% block title %}
-    {% if post %}
-        Редактировать запись
-    {% else %}
-        Добавить запись
-    {% endif %}
-{% endblock %}
+{% block title %}Создать группу{% endblock %}
 
-{% block header %}
-    {% if post %}
-        Редактировать запись
-    {% else %}
-        Добавить запись
-    {% endif %}
-{% endblock %}
+{% block header %}Создать группу{% endblock %}
 
 {% block content %}
     {% load user_filters %}
     <div class="row justify-content-center">
         <div class="col-md-8 p-5">
             <div class="card">
-                <div class="card-header">
-                    {% if edit %}
-                        Редактировать запись
-                    {% else %}
-                        Добавить запись
-                    {% endif %}
-                </div>
+                <div class="card-header">Создать группу </div>
                 <div class="card-body">
 
-                    <form method="post" enctype="multipart/form-data" action=
-                        {% if edit %}
-                            {% url 'posts:post_edit' user.username form.instance.id %}
-                        {% else %}
-                            {% url 'posts:new_post' %}
-                        {% endif %}>
+                {% for error in form.errors %}
+                  <div class="alert alert-danger" role="alert">
+                      {{ error|escape }}
+                  </div>
+                {% endfor %}
+
+                    <form method="post" enctype="multipart/form-data" action={% url 'posts:new_group' %}>
                         {% csrf_token %}
-                        {{ form.media }}
 
                         {% for field in form %}
                             <div class="form-group row" aria-required={% if field.field.required %}"true"{% else %}"false"{% endif %}>
@@ -51,13 +33,7 @@
                             </div>
                         {% endfor %}
                         <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {% if post %}
-                                        Сохранить
-                                    {% else %}
-                                        Добавить
-                                    {% endif %}
-                                </button>
+                                <button type="submit" class="btn btn-primary">Создать</button>
                         </div>
                     </form>
                 </div> <!-- card body -->

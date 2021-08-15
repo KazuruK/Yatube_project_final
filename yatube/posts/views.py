@@ -1,4 +1,5 @@
 """View-functions for describing the inner workings of the site pages."""
+from autoslug.settings import slugify
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -6,8 +7,8 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET
 
-from .forms import CommentForm, PostForm
-from .models import Follow, Group, Post, User
+from .forms import CommentForm, PostForm, GroupForm
+from .models import FollowAuthor, Group, Post, User, FollowGroup
 
 
 def page_not_found(request, exception):
@@ -35,10 +36,12 @@ def index(request):
     return render(request, 'posts/index.html', {'page': page})
 
 
-@login_required
 def all_groups(request):
     groups = Group.objects.all()
-    return render(request, 'posts/groups.html', {'groups': groups})
+    paginator = Paginator(groups, settings.PAGINATOR_POSTS_PER_PAGE)
+    page_number = request.GET.get('page')
+    page = paginator.get_page(page_number)
+    return render(request, 'posts/groups.html', {'page': page})
 
 
 def group_posts(request, slug):
@@ -57,9 +60,9 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     following = (
-        request.user.is_authenticated
-        and author != request.user
-        and Follow.objects.filter(
+            request.user.is_authenticated
+            and author != request.user
+            and FollowAuthor.objects.filter(
             user=request.user,
             author=author
         ).exists()
@@ -75,9 +78,9 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
     form = CommentForm(request.POST or None)
     following = (
-        request.user.is_authenticated
-        and post.author != request.user
-        and Follow.objects.filter(
+            request.user.is_authenticated
+            and post.author != request.user
+            and FollowAuthor.objects.filter(
             user=request.user,
             author=post.author
         ).exists()
@@ -106,6 +109,7 @@ def post_edit(request, username, post_id):
     return render(request, 'posts/new_post.html', {
         'post': post,
         'form': form,
+        'edit': True
     })
 
 
@@ -124,6 +128,16 @@ def new_post(request):
 
 
 @login_required
+def new_group(request):
+    form = GroupForm(request.POST or None)
+    if form.is_valid():
+        new_form = form.save(commit=False)
+        new_form.save()
+        return redirect('posts:group_posts', slug=new_form.slug)
+    return render(request, 'posts/new_group.html', {'form': form})
+
+
+@login_required
 def add_comment(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
@@ -139,9 +153,13 @@ def add_comment(request, username, post_id):
 @require_GET
 @login_required
 def follow_index(request):
-    follow_post_list = Post.objects.filter(
+    follow_author_list = Post.objects.filter(
         author__following__user=request.user
     )
+    follow_group_list = Post.objects.filter(
+        group__group_following__user=request.user
+    )
+    follow_post_list = follow_author_list | follow_group_list
     paginator = Paginator(follow_post_list, settings.PAGINATOR_POSTS_PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -152,11 +170,11 @@ def follow_index(request):
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     user = request.user
-    if author != user and not Follow.objects.filter(
+    if author != user and not FollowAuthor.objects.filter(
         author=author,
         user=user
     ).exists():
-        Follow.objects.create(
+        FollowAuthor.objects.create(
             user=user,
             author=author
         )
@@ -166,8 +184,33 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     get_object_or_404(
-        Follow,
+        FollowAuthor,
         author__username=username,
         user=request.user
     ).delete()
     return redirect('posts:profile', username=username)
+
+
+@login_required
+def group_follow(request, slug):
+    group = get_object_or_404(Group, slug=slug)
+    user = request.user
+    if not FollowGroup.objects.filter(
+        user=user,
+        group=group
+    ).exists():
+        FollowGroup.objects.create(
+            user=user,
+            group=group
+        )
+    return redirect('posts:group_posts', slug=slug)
+
+
+@login_required
+def group_unfollow(request, slug):
+    get_object_or_404(
+        FollowGroup,
+        group__slug=slug,
+        user=request.user
+    ).delete()
+    return redirect('posts:group_posts', slug=slug)

@@ -1,14 +1,19 @@
-<nav class="navbar navbar-light" style="background-color: #d7d7d7;">
-    <a class="navbar-brand" href="{% url 'posts:index' %}"><span style="color:#8d30ff">Ya</span>tube</a>
+<nav class="navbar navbar-dark" role="navigation" style="background-color: #343a40;">
+    <a class="navbar-brand" href="{% url 'posts:index' %}"><span style="color:#b695e8">Ya</span>tube</a>
     <nav class="my-2 my-md-0 mr-md-3">
         {% if user.is_authenticated %}
-            <a class="p-2 text-dark" href="{% url 'posts:new_post' %}">Новая запись</a>
-            <a class="p-2 text-dark" href="{% url 'posts:profile' user.username %}">Пользователь: {{ user.username }}</a>
-            <a class="p-2 text-dark" href="{% url 'password_change' %}">Изменить пароль</a>
-            <a class="p-2 text-dark" href="{% url 'logout' %}">Выйти</a>
+            {% if user.is_superuser %}
+                 <a class="p-2 text-light" href="/admin/" >Админ зона</a>
+            {% endif %}
+                <a class="p-2 text-light" href="{% url 'posts:all_groups' %}">Все сообщества сайта</a>
+            <a class="p-2 text-light" href="{% url 'posts:new_post' %}">Новая запись</a>
+            <a class="p-2 text-light" href="{% url 'posts:profile' user.username %}">Пользователь: {{ user.username }}</a>
+            <a class="p-2 text-light" href="{% url 'password_change' %}">Изменить пароль</a>
+            <a class="p-2 text-light" href="{% url 'logout' %}">Выйти</a>
         {% else %}
-            <a class="p-2 text-dark" href="{% url 'login' %}">Войти</a> |
-            <a class="p-2 text-dark" href="{% url 'signup' %}">Регистрация</a>
+            <a class="p-2 text-light" href="{% url 'login' %}">Войти</a> |
+            <a class="p-2 text-light" href="{% url 'signup' %}">Регистрация</a>
+
         {% endif %}
     </nav>
 </nav>

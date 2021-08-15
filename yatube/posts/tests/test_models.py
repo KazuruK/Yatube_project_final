@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from ..models import Comment, Follow, Group, Post, User
+from ..models import Comment, FollowAuthor, Group, Post, User
 
 
 class GroupModelTest(TestCase):
@@ -101,4 +101,4 @@ class FollowModelTest(TestCase):
         for field, expected_value in field_verbose_post.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    Follow._meta.get_field(field).verbose_name, expected_value)
+                    FollowAuthor._meta.get_field(field).verbose_name, expected_value)

@@ -7,7 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Follow, Group, Post, User
+from ..models import FollowAuthor, Group, Post, User
 
 TEST_DIR = 'test_data'
 SMALL_GIF = (
@@ -86,7 +86,7 @@ class TaskPagesTests(TestCase):
             author=user,
             image=cls.image
         )
-        cls.follow = Follow.objects.create(
+        cls.follow = FollowAuthor.objects.create(
             user=user2,
             author=user
         )
@@ -114,7 +114,8 @@ class TaskPagesTests(TestCase):
         for url, key in list_urls_post_in_context:
             with self.subTest(url=url, key=key):
                 response = self.authorized_client.get(url)
-                if key == 'page' and len(response.context[key]) == 1:
+                if key == 'page':
+                    self.assertEqual(len(response.context[key]), 1)
                     post = response.context[key][0]
                 else:
                     post = response.context[key]
@@ -138,7 +139,7 @@ class TaskPagesTests(TestCase):
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
                 if url == ALL_GROUPS_URL:
-                    for group_item in response.context['groups']:
+                    for group_item in response.context['page']:
                         if group_item.id == self.group.id:
                             group = group_item
                     self.assertEqual(group, self.group)
@@ -268,7 +269,7 @@ class TaskFollowTests(TestCase):
             text='Тестовый пост от второго юзера',
             author=user2
         )
-        cls.follow = Follow.objects.create(
+        cls.follow = FollowAuthor.objects.create(
             user=user2,
             author=user3
         )
@@ -276,7 +277,7 @@ class TaskFollowTests(TestCase):
     def test_follow(self):
         self.authorized_client.get(PROFILE_FOLLOW_URL)
         self.assertTrue(
-            Follow.objects.filter(
+            FollowAuthor.objects.filter(
                 user=self.user,
                 author=self.user2
             ).exists()
@@ -285,7 +286,7 @@ class TaskFollowTests(TestCase):
     def test_unfollow(self):
         self.authorized_client2.get(PROFILE_UNFOLLOW_URL)
         self.assertTrue(
-            not Follow.objects.filter(
+            not FollowAuthor.objects.filter(
                 user=self.user2,
                 author=self.user3
             ).exists()

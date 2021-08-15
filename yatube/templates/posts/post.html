@@ -8,10 +8,9 @@
     {% include "includes/profile_card.html" %}
     <div class="col-md-9">
     <!-- Пост -->
-      {% include "includes/post_item.html" with post=post %}
+      {% include "includes/post_item.html" with post=post post_url=True %}
     </div>
   </div>
-  {% include 'includes/comments.html' with post=post %}
 </main>
 
 {% endblock %}

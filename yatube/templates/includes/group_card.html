@@ -1,0 +1,47 @@
+<div class="mb-3 mt-1">
+      <div class="card">
+        <div class="card-body">
+          <div class="h2">
+            <!-- Имя автора -->
+            {{ group.title }}
+          </div>
+          <div class="h3 text-muted">
+            <!-- username автора -->
+               <a
+                  class="h5 text-muted"
+                  href="{% url 'posts:group_posts' group.slug %}" role="button">
+                  #{{ group.slug }}
+               </a>
+          </div>
+          <p class="card-text">
+            {{ group.description|linebreaksbr }}
+          </p>
+        </div>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            <div class="h6 text-muted">
+              Подписчиков: {{ group.group_following.count }} <br>
+              Записей: {{ group.group_posts.count }}
+            </div>
+          </li>
+        <!-- Реализация подписки -->
+          {% if not dont_show_button %}
+              <li class="list-group-item">
+                {% if following %}
+                    <a
+                      class="btn btn-lg btn-light"
+                      href="{% url 'posts:group_unfollow' group.slug %}" role="button">
+                      Отписаться
+                    </a>
+                {% else %}
+                    <a
+                      class="btn btn-lg btn-primary"
+                      href="{% url 'posts:group_follow' group.slug %}" role="button">
+                      Подписаться
+                    </a>
+                {% endif %}
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>

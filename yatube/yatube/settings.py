@@ -30,6 +30,8 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "[::1]",
     "testserver",
+    'www.KazuruK.pythonanywhere.com',
+    'KazuruK.pythonanywhere.com',
 ]
 
 
@@ -46,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'sorl.thumbnail',
+    'ckeditor'
 ]
 
 MIDDLEWARE = [

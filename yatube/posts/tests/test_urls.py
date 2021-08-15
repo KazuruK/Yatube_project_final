@@ -68,8 +68,7 @@ class TaskURLTests(TestCase):
     def test_urls(self):
         url_client_status = [
             [INDEX_URL, self.guest_client, HTTPStatus.OK],
-            [ALL_GROUPS_URL, self.guest_client, HTTPStatus.FOUND],
-            [ALL_GROUPS_URL, self.authorized_client, HTTPStatus.OK],
+            [ALL_GROUPS_URL, self.guest_client, HTTPStatus.OK],
             [GROUP_URL, self.guest_client, HTTPStatus.OK],
             [NEW_POST_URL, self.guest_client, HTTPStatus.FOUND],
             [NEW_POST_URL, self.authorized_client, HTTPStatus.OK],
@@ -97,8 +96,6 @@ class TaskURLTests(TestCase):
 
     def test_redirect(self):
         url_client_redirect = [
-            [ALL_GROUPS_URL, self.guest_client,
-             REDIRECT + ALL_GROUPS_URL],
             [NEW_POST_URL, self.guest_client,
              REDIRECT + NEW_POST_URL],
             [FOLLOW_URL, self.guest_client,

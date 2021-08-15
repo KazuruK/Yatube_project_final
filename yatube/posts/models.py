@@ -1,4 +1,5 @@
 """Database interaction models."""
+from ckeditor.fields import RichTextField
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -18,6 +19,7 @@ class Group(models.Model):
                                    verbose_name='Описание')
 
     class Meta:
+        ordering = ['title']
         verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
 
@@ -38,7 +40,7 @@ class Post(models.Model):
                               on_delete=models.SET_NULL,
                               related_name='group_posts',
                               verbose_name='Группа')
-    text = models.TextField(verbose_name='Текст поста', blank=False)
+    text = RichTextField(verbose_name='Текст поста', blank=False)
     pub_date = models.DateTimeField(auto_now_add=True,
                                     verbose_name='Дата создания')
     author = models.ForeignKey(User, on_delete=models.CASCADE,
@@ -70,7 +72,7 @@ class Comment(models.Model):
                                    verbose_name='Дата создания')
 
     class Meta:
-        ordering = ['-created']
+        ordering = ['created']
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
 
@@ -78,7 +80,7 @@ class Comment(models.Model):
         return self.text[:15]
 
 
-class Follow(models.Model):
+class FollowAuthor(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name='follower',
                              verbose_name='Подписчик')
@@ -87,5 +89,19 @@ class Follow(models.Model):
                                verbose_name='Блогер')
 
     class Meta:
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
+        verbose_name = 'Подписка на автора'
+        verbose_name_plural = 'Подписки на авторов'
+
+
+class FollowGroup(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name='group_follower',
+                             verbose_name='Подписчик')
+    group = models.ForeignKey(Group, on_delete=models.CASCADE,
+                              related_name='group_following',
+                              verbose_name='Группа')
+
+    class Meta:
+        verbose_name = 'Подписка на группу'
+        verbose_name_plural = 'Подписки на группы'
+

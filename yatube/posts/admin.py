@@ -2,7 +2,7 @@
    change and create posts and groups."""
 from django.contrib import admin
 
-from .models import Comment, Follow, Group, Post
+from .models import Comment, FollowAuthor, Group, Post, FollowGroup
 
 
 class GroupAdmin(admin.ModelAdmin):
@@ -46,14 +46,22 @@ class CommentAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
-class FollowAdmin(admin.ModelAdmin):
+class FollowAuthorAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'author')
     search_fields = ('user', 'author')
     list_filter = ('user', 'author')
     empty_value_display = '-пусто-'
 
 
+class FollowGroupAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'user', 'group')
+    search_fields = ('user', 'group')
+    list_filter = ('user', 'group')
+    empty_value_display = '-пусто-'
+
+
 admin.site.register(Post, PostAdmin)
 admin.site.register(Group, GroupAdmin)
 admin.site.register(Comment, CommentAdmin)
-admin.site.register(Follow, FollowAdmin)
+admin.site.register(FollowAuthor, FollowAuthorAdmin)
+admin.site.register(FollowGroup, FollowGroupAdmin)

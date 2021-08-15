@@ -1,13 +1,11 @@
 {% extends "posts/base.html" %}
 {% block title %}Записи сообщества {{ group }}{% endblock %}
-{% block header %}{{ group.title }}{% endblock %}
+{% block header %}{% endblock %}
 
 {% block content %}
-    <p>
-        {{ group.description|linebreaksbr  }}
-    </p><br>
+    {% include "includes/group_card.html" %}
     {% for post in page %}
-        {% include "includes/post_item.html" with post=post ignore_group=True %}
+        {% include "includes/post_item.html" with post=post ignore_group=True without_comment_button=False %}
     {%  endfor %}
 
     {% include "includes/paginator.html" %}

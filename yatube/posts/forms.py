@@ -1,6 +1,7 @@
+from autoslug.settings import slugify
 from django import forms
 
-from .models import Comment, Post
+from .models import Comment, Post, Group
 
 
 class PostForm(forms.ModelForm):
@@ -18,6 +19,12 @@ class PostForm(forms.ModelForm):
             'group': 'Выберете группу для публикации, если хотите :^)',
             'image': 'Хотите ли вы проиллюстрировать свой пост?'
         }
+
+
+class GroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = ['title', 'slug', 'description']
 
 
 class CommentForm(forms.ModelForm):
